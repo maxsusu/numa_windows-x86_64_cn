@@ -1,0 +1,241 @@
+[server]
+bind_addr = "0.0.0.0:53"      # 或使用列表格式：["10.0.0.1:53", "127.0.0.1:53"]
+api_port = 5380
+# api_bind_addr = "127.0.0.1"  # 默认值；如需局域网访问管理面板，请设置为 "0.0.0.0"
+# api_token = "…"             # 本地回环地址免令牌访问，其他所有客户端都需要该令牌。
+#                              # 首次启动时自动生成（仅打印一次日志，存放在data_dir目录），
+#                              # 除非在此处配置或者通过环境变量 NUMA_API_TOKEN 设置。
+data_dir = "./data"  		   # numa存放TLS CA证书与证书相关文件的目录
+#                              # 默认值：Linux系统遵循FHS规范为 /var/lib/numa；
+#                              # macOS(Homebrew环境)为 /usr/local/var/numa；
+#                              # Windows版本./data写法可以自定在numa根目录下
+filter_aaaa = true          # 在仅IPv4的网络环境中，对AAAA查询返回NODATA（NOERROR空应答），
+#                              # 这样实现Happy Eyeballs算法的客户端就不会等待无法成功的IPv6尝试。
+#                              # 同时会剥离HTTPS/SVCB记录中的`ipv6hint`字段(RFC 9460)，
+#                              # 防止现代浏览器（Chrome ≥103、Firefox、Safari）通过SVCB提示绕过AAAA过滤。
+#                              # 本地区域记录、自定义覆盖记录、.numa代理域名不会被过滤，
+#                              # 你仍然可以为本地服务配置IPv6记录。
+#                              # 默认值：false。
+
+# ── 客户端IP白名单 ────────────────────────────────────────────
+# 对外网开放绑定地址时必须配置此项，否则numa会成为开放递归解析器。
+# 本地回环地址始终允许访问。拒绝的客户端行为：UDP静默丢弃、TLS握手前断开、DoH返回403。
+#
+allow_from = ["10.0.0.0/8", "192.168.0.0/16", "fd00::/8"]
+
+[upstream]
+mode = "forward"                              # "forward"(默认) — 转发给上游DNS服务器
+address = ["180.76.76.76", "223.5.5.5", "119.29.29.29"]   #不能和doh同时启用,目前有腾讯-阿里-百度dns，可自行替换
+#                                               # "recursive" — 使用根提示直接递归解析（不需要填写地址）
+#                                               # "odoh" — 匿名DoH协议（参考下方ODoH配置块）
+# address = "9.9.9.9"                           # 单个上游服务器（普通UDP协议）
+# address = ["192.168.1.1", "9.9.9.9:5353"]    # 多个上游服务器 — 根据SRTT往返时延自动选择最快的
+# address = "https://dns.quad9.net/dns-query"   # DNS-over-HTTPS 加密DNS
+# address = "tls://9.9.9.9#dns.quad9.net"       # DNS-over-TLS加密DNS，默认853端口
+# fallback = ["8.8.8.8", "1.1.1.1"]            # 仅当所有主上游全部失败才会尝试这些备用服务器
+# port = 53                                     # 地址未指定端口时使用的默认端口
+# timeout_ms = 3000
+# hedge_ms = 0                                   # 请求并发试探延迟(毫秒)。默认：0（关闭）。
+#                                                # 设置例如10，代表等待10ms无响应就同时发起另一条上游查询，
+#                                                # 用来解决UDP丢包、DoH请求拥塞、TLS握手卡顿问题。
+#                                                # 会翻倍上游查询请求数量，
+#                                                # 对于有查询配额限制的服务商（NextDNS、Control D）请保持关闭。
+
+# ODoH (匿名DNS-over-HTTPS，RFC 9230)。中继服务器看到你的IP但看不到查询域名；
+# 目标DNS服务器看到查询域名但是看不到你的IP。numa默认拒绝中继与目标属于同一服务商的配置（eTLD+1校验）。
+# [upstream]
+# mode = "odoh"
+# relay = "https://odoh-relay.numa.rs/relay"
+# target = "https://odoh.cloudflare-dns.com/dns-query"
+# strict = true                                 # 默认：中继失败时拒绝降级到fallback备用上游。
+#                                                # 设置false允许降级为非匿名的备用解析链路。
+# relay_ip = "178.104.229.30"                   # 可选：固定中继服务器IP，避免numa自身作为系统DNS启动时，
+# target_ip = "104.16.249.249"                  # 启动初始化阶段通过引导解析泄露中继/目标主机域名。
+#                                                # 详细参考 recipes/odoh-upstream.md。
+# root_hints = [                                # 仅recursive递归模式使用
+#     "198.41.0.4",      # a.root-servers.net (Verisign)
+#     "199.9.14.201",    # b.root-servers.net (USC-ISI)
+#     "192.33.4.12",     # c.root-servers.net (Cogent)
+#     "199.7.91.13",     # d.root-servers.net (UMD)
+#     "192.203.230.10",  # e.root-servers.net (NASA)
+#     "192.5.5.241",     # f.root-servers.net (ISC)
+#     "192.112.36.4",    # g.root-servers.net (US DoD)
+#     "198.97.190.53",   # h.root-servers.net (US Army)
+#     "192.36.148.17",   # i.root-servers.net (Netnod)
+#     "192.58.128.30",   # j.root-servers.net (Verisign)
+#     "193.0.14.129",    # k.root-servers.net (RIPE NCC)
+#     "199.7.83.42",     # l.root-servers.net (ICANN)
+#     "202.12.27.33",    # m.root-servers.net (WIDE)
+# ]
+# prime_tlds = [                                # 递归模式下，启动时预加载缓存的顶级域名列表
+#     "com", "net", "org", "info",              # 通用顶级域
+#     "io", "dev", "app", "xyz", "me",
+#     "eu", "uk", "de", "fr", "nl",             # 欧盟及欧洲国家顶级域
+#     "it", "es", "pl", "se", "no",
+#     "dk", "fi", "at", "be", "ie",
+#     "pt", "cz", "ro", "gr", "hu",
+#     "bg", "hr", "sk", "si", "lt",
+#     "lv", "ee", "ch", "is",
+#     "co", "br", "au", "ca", "jp",             # 其他主要国家顶级域
+# ]
+
+# [[forwarding]]                                  # 按域名后缀条件转发规则
+# suffix = "168.192.in-addr.arpa"                  # 单个后缀指向一个上游DNS
+# upstream = "100.90.1.63:5361"
+#
+# [[forwarding]]
+# suffix = ["home.local", "home.arpa"]             # 多个后缀使用同一个上游
+# upstream = "10.0.0.1"                            # 默认53端口
+#
+# [[forwarding]]                                    # DoT上游格式：tls://IP[:port]#主机名
+# suffix = ["google.com", "goog"]                   # 主机名用于TLS SNI与证书校验
+# upstream = "tls://9.9.9.9#dns.quad9.net"          # 默认853端口
+#
+# [[forwarding]]                                    # DoH上游填写完整https链接
+# suffix = "example.corp"
+# upstream = "https://dns.quad9.net/dns-query"
+#
+# [[forwarding]]                                    # 多上游数组，基于SRTT时延故障转移
+# suffix = ["google.com", "goog"]                   # 优先选择健康且延迟最低的，跳过故障服务器
+# upstream = [
+#     "tls://9.9.9.9#dns.quad9.net",
+#     "tls://149.112.112.112#dns.quad9.net",
+# ]
+
+[blocking]
+enabled = true               # 设置false关闭广告拦截
+refresh_hours = 12           # 如果刷新后列表为空，会1小时后重试，而不是等待完整周期。
+# 每个远程拦截列表的最后一份有效副本保存在 <data_dir>/blocklists 目录，
+# 上游列表服务不可用时重启服务依然可以正常拦截。本地缓存不会过期；
+# 面板会展示列表的老化时间，旧列表总比没有列表要好。
+# 无论列表格式是hosts格式、裸域名、adblock语法、远程或者本地文件，
+# 每条规则都会拦截该域名以及所有子域名。
+lists = [
+#     "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro-onlydomains.txt",
+ "https://cdn.uura.cn/AWAvenue/AWAvenue-Ads-Rule-hosts.txt", #内置秋风广告规则，hagezi的规则好像停止了？
+#     "file:///etc/numa/local-blocklist.txt",  # 本地文件：hosts格式或者纯域名
+#     "/etc/numa/extra-blocks.txt",            # 直接写绝对路径也支持
+]
+# 如果raw.githubusercontent.com访问失败，可以使用jsDelivr镜像：
+# https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/wildcard/pro-onlydomains.txt
+# allowlist = ["example.com"]  # 永远不会被拦截的域名
+
+# ── 按客户端设置域名策略 ─────────────────────────────────────
+# 在全局拦截列表之上，针对特定客户端做域名拦截/放行。
+# `block`/`allow`语法和全局拦截列表adblock语法一致。本地回环地址永远不受限制。
+# 规则匹配顺序：命中客户端的第一条包含该域名拦截/放行规则生效；
+# 单条规则内，放行优先级高于拦截。
+#
+# [[client_policy]]
+# from    = ["192.168.1.0/24"]   # 该规则生效的客户端(CIDR网段/IP地址)
+# exclude = ["192.168.1.254"]    # 从网段中排除部分主机（例如你的设备）
+# block   = ["youtube.com", "*.tiktok.com"]
+# allow   = ["safe.example.com"] # 将被全局列表拦截的域名做放行豁免
+#
+# [[client_policy]]
+# from  = ["10.0.0.50"]          # 单台主机：单独给这个设备设置更严格规则
+# block = ["reddit.com"]
+# filter_aaaa = true             # 为此客户端覆盖全局[server].filter_aaaa配置（仅填写此项规则也可生效）
+
+[cache]
+max_entries = 100000
+min_ttl = 60
+max_ttl = 86400
+# warm = ["google.com", "github.com"]  # 服务启动时预先解析，TTL到期前主动刷新缓存
+
+[proxy]
+enabled = true
+port = 8088
+tls_port = 8543
+tld = "numa"
+# bind_addr = "127.0.0.1"  # 默认；设置为0.0.0.0即可局域网访问.numa代理服务
+
+# ── 使用自己的TLS证书 ────────────────────────────────────────
+# 可以不用在每台设备安装CA根证书。`tld`必须是你自己持有的域名。
+# 外部工具完成证书续期；重启numa加载新证书。
+#
+# cert_path = "/etc/letsencrypt/live/example.com/fullchain.pem"
+# key_path  = "/etc/letsencrypt/live/example.com/privkey.pem"
+
+# ── PROXY protocol v2代理协议 ──────────────────────────────────────────────
+# 当numa部署在四层负载均衡后端(dnsdist、HAProxy、AWS NLB)，用来获取真实客户端IP。
+# 填写非空`from`列表代表开启强制模式：不在信任列表来源、或者没有携带代理协议头的连接直接丢弃。
+#
+# [proxy.proxy_protocol]
+# from = ["10.0.0.0/8", "127.0.0.1"]  # 可信四层前端负载均衡设备地址
+# header_timeout_ms = 5000             # 超时未收到完整代理协议头直接断开连接
+
+# 预配置服务（numa.numa会自动内置添加，无需手动写）
+# [[services]]
+# name = "frontend"
+# target_port = 5173
+#
+# [[services]]
+# name = "api"
+# target_port = 8000
+# target_host = "192.168.1.50"  # 可选，默认localhost本机
+
+# 区域记录示例：
+# [[zones]]
+# domain = "dimescu.ro"
+# record_type = "A"
+# value = "3.120.139.105"
+# ttl = 30
+
+# [[zones]]
+# domain = "test.local"
+# record_type = "A"
+# value = "127.0.0.1"
+# ttl = 60
+
+# 局域网主机反向DNS(PTR记录) — tcpdump访问日志显示可读主机名
+# [[zones]]
+# domain = "1.0.168.192.in-addr.arpa"   # 192.168.0.1反向拼接.in-addr.arpa
+# record_type = "PTR"
+# value = "router.lan"
+# ttl = 300
+
+# 泛域名区域记录 — 一条规则匹配整个子域名树。仅支持最左侧标签(RFC 4592)。
+# 精确记录优先级永远高于泛解析；泛解析不会匹配父域名。
+# 例如`*.pool.ntp.org`匹配`time2.pool.ntp.org`，但是不会匹配`pool.ntp.org`。
+# [[zones]]
+# domain = "*.pool.ntp.org"
+# record_type = "CNAME"
+# value = "time.onsite"
+# ttl = 60
+
+# DNSSEC签名校验（需要mode = "recursive"递归模式）
+# [dnssec]
+# enabled = false             # 需要手动开启；校验从根KSK密钥开始的信任链
+# strict = false              # true：签名无效直接返回SERVFAIL解析失败
+
+# DNS-over-TLS监听(RFC 7858) — 加密DNS标准853端口
+# [dot]
+# enabled = true              # 默认开启；填false关闭
+# port = 853                  # DoT标准端口
+# bind_addr = "0.0.0.0"       # IPv4或者IPv6地址；不指定则监听全部网卡
+# cert_path = "/etc/numa/dot.crt"  # PEM格式证书；不填则使用自签名证书（优先使用proxy模块CA）
+# key_path = "/etc/numa/dot.key"   # PEM私钥；必须和证书路径同时配置
+
+# ── DoT端口开启PROXY v2代理协议 ────────────────────────────────────────────────
+# 语义和上面[proxy.proxy_protocol]完全一致。
+#
+# [dot.proxy_protocol]
+# from = ["10.0.0.0/8"]
+# header_timeout_ms = 5000
+
+# mDNS局域网服务发现（默认关闭，开启后才会产生网络流量）
+# [lan]
+# enabled = true              # 通过mDNS(_numa._tcp.local)发现局域网其他numa实例
+# broadcast_interval_secs = 30
+# peer_timeout_secs = 90
+
+# ── 移动端API接口 ─────────────────────────────────────────────────────
+# 为配套手机APP提供只读HTTP接口（设备发现、/ca.pem证书下载、/mobileconfig配置文件、
+# numa setup-phone二维码引导入网）。默认监听局域网网卡。
+# 不要在不受信任局域网开启（公司Wi‑Fi、公共咖啡馆），
+# 同网络攻击者可以劫持mDNS返回伪造配置文件。
+[mobile]
+enabled = false                # 手动开启移动端API监听
+# port = 8765                 # 默认端口，与Discovery.swift默认APIPort匹配
+# bind_addr = "0.0.0.0"       # 默认；设置为"127.0.0.1"仅本机访问
