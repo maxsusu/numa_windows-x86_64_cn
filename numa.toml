@@ -112,7 +112,7 @@ refresh_hours = 12           # 如果刷新后列表为空，会1小时后重试
 # 每条规则都会拦截该域名以及所有子域名。
 lists = [
 #     "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro-onlydomains.txt",
- "https://cdn.uura.cn/AWAvenue/AWAvenue-Ads-Rule-hosts.txt", #内置秋风广告规则，hagezi的规则好像停止了？
+ "https://cdn.uura.cn/AWAvenue/AWAvenue-Ads-Rule-hosts.txt", #内置秋风广告规则
 #     "file:///etc/numa/local-blocklist.txt",  # 本地文件：hosts格式或者纯域名
 #     "/etc/numa/extra-blocks.txt",            # 直接写绝对路径也支持
 ]
