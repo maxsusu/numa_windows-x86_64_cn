@@ -8,7 +8,7 @@ api_port = 5380
 data_dir = "./data"  		   # numa存放TLS CA证书与证书相关文件的目录
 #                              # 默认值：Linux系统遵循FHS规范为 /var/lib/numa；
 #                              # macOS(Homebrew环境)为 /usr/local/var/numa；
-#                              # Windows版本./data写法可以自定在numa根目录下
+#                              # Windows版本./data写法可以指定在numa根目录下
 filter_aaaa = true          # 在仅IPv4的网络环境中，对AAAA查询返回NODATA（NOERROR空应答），
 #                              # 这样实现Happy Eyeballs算法的客户端就不会等待无法成功的IPv6尝试。
 #                              # 同时会剥离HTTPS/SVCB记录中的`ipv6hint`字段(RFC 9460)，
